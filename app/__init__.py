@@ -1,0 +1,3 @@
+"""
+UptimeRobot API - FastAPI application
+""" 
