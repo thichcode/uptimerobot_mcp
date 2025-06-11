@@ -11,6 +11,7 @@ API quản lý UptimeRobot với khả năng xử lý ngôn ngữ tự nhiên th
 - Hệ thống phân quyền người dùng
 - Cache management
 - Context management cho MCP
+- Tích hợp với n8n
 
 ## Yêu cầu
 
@@ -18,6 +19,7 @@ API quản lý UptimeRobot với khả năng xử lý ngôn ngữ tự nhiên th
 - FastAPI
 - UptimeRobot API Key
 - Ollama (cho MCP)
+- n8n (cho workflow automation)
 
 ## Cài đặt
 
@@ -52,6 +54,153 @@ uvicorn app.main:app --reload
 ```
 http://localhost:8000/docs
 ```
+
+## Tích hợp với n8n
+
+### Cài đặt n8n
+
+1. Cài đặt n8n:
+```bash
+npm install n8n -g
+```
+
+2. Khởi động n8n:
+```bash
+n8n start
+```
+
+### Tạo Workflow
+
+1. Truy cập n8n interface tại `http://localhost:5678`
+
+2. Tạo workflow mới và thêm các nodes:
+   - HTTP Request node để gọi API
+   - Function node để xử lý dữ liệu
+   - Schedule Trigger node để tự động hóa
+   - Email node để gửi thông báo
+
+### Ví dụ Workflow
+
+1. Tự động tạo maintenance window:
+```json
+{
+  "nodes": [
+    {
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "parameters": {
+        "interval": [
+          {
+            "field": "days",
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "http://localhost:8000/maintenance",
+        "method": "POST",
+        "body": {
+          "start_time": "{{$now}}",
+          "duration": 3600,
+          "description": "Bảo trì định kỳ",
+          "monitors": [123, 456]
+        }
+      }
+    }
+  ]
+}
+```
+
+2. Tự động tạo báo cáo hàng tuần:
+```json
+{
+  "nodes": [
+    {
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "parameters": {
+        "interval": [
+          {
+            "field": "weeks",
+            "value": 1
+          }
+        ]
+      }
+    },
+    {
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "http://localhost:8000/reports",
+        "method": "POST",
+        "body": {
+          "type": "uptime",
+          "start_date": "{{$now.minus(7, 'days')}}",
+          "end_date": "{{$now}}"
+        }
+      }
+    },
+    {
+      "type": "n8n-nodes-base.emailSend",
+      "parameters": {
+        "to": "admin@example.com",
+        "subject": "Báo cáo uptime hàng tuần",
+        "text": "{{$json}}"
+      }
+    }
+  ]
+}
+```
+
+3. Tự động xử lý sự cố:
+```json
+{
+  "nodes": [
+    {
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "path": "monitor-alert",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "http://localhost:8000/mcp/chat",
+        "method": "POST",
+        "body": {
+          "message": "Phân tích sự cố và đề xuất giải pháp",
+          "session_id": "{{$json.session_id}}"
+        }
+      }
+    },
+    {
+      "type": "n8n-nodes-base.slack",
+      "parameters": {
+        "channel": "#alerts",
+        "text": "{{$json.ai_response.message}}"
+      }
+    }
+  ]
+}
+```
+
+### Các tính năng n8n có thể tích hợp
+
+1. Tự động hóa:
+   - Tạo maintenance window định kỳ
+   - Tạo báo cáo tự động
+   - Xử lý sự cố tự động
+
+2. Thông báo:
+   - Gửi email báo cáo
+   - Gửi thông báo Slack/Discord
+   - Gửi SMS cho sự cố nghiêm trọng
+
+3. Tích hợp với các dịch vụ khác:
+   - Jira để tạo ticket
+   - Google Calendar để đồng bộ lịch
+   - Grafana để hiển thị metrics
 
 ## API Endpoints
 
@@ -130,7 +279,7 @@ curl -X POST "http://localhost:8000/mcp/chat" \
 
 ## Đóng góp
 
-Mọi đóng góp đều được hoan nghênh! Vui lòng tạo issue hoặc pull request.
+Xem [CONTRIBUTING.md](CONTRIBUTING.md) để biết thêm chi tiết về cách đóng góp.
 
 ## License
 
